@@ -87,7 +87,10 @@ class AppVM:
             subprocess.check_call(
                 ["virsh", "-c", conn.getURI(), "console", self.vmname]
             )
+
+    def destroy(self, conn):
         try:
+            dom = conn.lookupByName(self.vmname)
             print(f"Destroying {dom.name()}")
             dom.destroy()
         except libvirt.libvirtError:
@@ -101,6 +104,8 @@ def run(args):
 
     with libvirt_connection("qemu:///system") as conn:
         appvm.start(conn)
+        if not args.background:
+            appvm.destroy(conn)
 
 
 def main():
@@ -116,8 +121,13 @@ def main():
         help="Name of the nixpkgs package to run.",
     )
     run_parser.add_argument(
-        "--gui",
+        "--gui", "-g",
         help="If specified, add graphical devices to the VM.",
+        action="store_true",
+    )
+    run_parser.add_argument(
+        "--background", "-b",
+        help="If specified, run in the background (and don't kill the VM on exit).",
         action="store_true",
     )
 
