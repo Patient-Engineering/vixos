@@ -2,6 +2,7 @@ import re
 import os
 import argparse
 import subprocess
+import libvirt
 from pathlib import Path
 from .template_xml import generate_xml
 from .template_nix import generate_base_nix, generate_nix
@@ -10,33 +11,40 @@ from typing import Tuple
 
 
 class AppVM:
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, gui: bool) -> None:
         self.name = name
+        self.is_gui = gui
+        self.vixos_path = os.path.expanduser("~/vixos")
+        Path(self.vixos_path).mkdir(exist_ok=True)
+        self.shared_path = self.vixos_path + "/shared"
+        Path(self.shared_path).mkdir(exist_ok=True)
 
-    def xml_config(
-        self, vmname: str, vm_path: str, reginfo: str, image_path: str, shared_path: str
-    ) -> str:
+    @property
+    def vmname(self):
+        return f"vixos_{self.name}"
+
+    def xml_config(self, vm_path: str, reginfo: str, image_path: str) -> str:
         return generate_xml(
-            vmname=vmname,
+            vmname=self.vmname,
             network="libvirt",
-            gui=True,
+            gui=self.is_gui,
             vm_path=vm_path,
             reginfo=reginfo,
             image_path=image_path,
-            shared_dir=shared_path,
+            shared_dir=self.shared_path,
         )
 
-    def make_nix_config_file(self, vixos_path: str) -> str:
-        with open(f"{vixos_path}/base.nix", "w") as configf:
+    def make_nix_config_file(self) -> str:
+        with open(f"{self.vixos_path}/base.nix", "w") as configf:
             configf.write(generate_base_nix())
 
         configfile = f"{self.name}.nix"
-        configpath = f"{vixos_path}/{configfile}"
+        configpath = f"{self.vixos_path}/{configfile}"
         with open(configpath, "w") as configf:
             configf.write(generate_nix(self.name))
         return configfile
 
-    def generate_vm(self, vixos_path: str, name: str) -> Tuple[str, str, str]:
+    def generate_vm(self, name: str) -> Tuple[str, str, str]:
         subprocess.check_call(
             [
                 "nix-build",
@@ -44,9 +52,9 @@ class AppVM:
                 "-A",
                 "config.system.build.vm",
                 "-I",
-                f"nixos-config={vixos_path}/{name}",
+                f"nixos-config={self.vixos_path}/{name}",
                 "-I",
-                vixos_path,
+                self.vixos_path,
             ]
         )
 
@@ -54,41 +62,42 @@ class AppVM:
             config = configf.read()
 
         reginfo = re.findall("regInfo=.*/registration", config)[0]
-        print("reginfo=", reginfo)
 
         realpath = os.readlink("result/system")
-        print("realpath=", realpath)
         os.unlink("result")
 
-        qcow2 = f"{vixos_path}/{name}.fake.qcow2"
+        qcow2 = f"{self.vixos_path}/{name}.fake.qcow2"
         if not Path(qcow2).exists():
             subprocess.check_call(["qemu-img", "create", "-f", "qcow2", qcow2, "40M"])
 
         return (realpath, reginfo, qcow2)
 
     def start(self, conn) -> None:
-        vixos_path = os.path.expanduser("~/vixos")
-        Path(vixos_path).mkdir(exist_ok=True)
-
-        shared_path = vixos_path + "/shared"
-        Path(shared_path).mkdir(exist_ok=True)
-
-        vmname = f"vixos_{self.name}"
-
-        config_file = self.make_nix_config_file(vixos_path)
-        vm_path, reginfo, qcow2 = self.generate_vm(vixos_path, config_file)
-        config = self.xml_config(vmname, vm_path, reginfo, qcow2, shared_path)
+        config_file = self.make_nix_config_file()
+        vm_path, reginfo, qcow2 = self.generate_vm(config_file)
+        config = self.xml_config(vm_path, reginfo, qcow2)
         dom = conn.createXML(config)
         if not dom:
             raise SystemExit("Failed to create a domain from an XML definition")
 
-        print("Guest " + dom.name() + " has booted")
+        print(f"Guest {dom.name()} has booted")
+        if self.is_gui:
+            subprocess.check_call(["virt-viewer", "-c", conn.getURI(), self.vmname])
+        else:
+            subprocess.check_call(
+                ["virsh", "-c", conn.getURI(), "console", self.vmname]
+            )
+        try:
+            print(f"Destroying {dom.name()}")
+            dom.destroy()
+        except libvirt.libvirtError:
+            print(f"Destroying failed (probably domain already destroyed).")
 
 
 def run(args):
     print(f"OK, running {args.package}...")
 
-    appvm = AppVM(args.package)
+    appvm = AppVM(args.package, args.gui)
 
     with libvirt_connection("qemu:///system") as conn:
         appvm.start(conn)
