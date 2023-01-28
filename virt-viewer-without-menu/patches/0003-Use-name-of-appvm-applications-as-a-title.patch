@@ -1,0 +1,13 @@
+--- a/src/virt-viewer-window.c
++++ b/src/virt-viewer-window.c
+@@ -1324,6 +1324,10 @@ virt_viewer_window_update_title(VirtViewerWindow *self)
+         grabhint = g_strdup_printf(_("(Press %s to release pointer)"), label);
+         g_free(label);
+
++        if (g_str_has_prefix(self->subtitle, "vixos_")) {
++            /* Use name of the application as a title */
++            title = g_strdup_printf(_("%s"), &self->subtitle[strlen("vixos_")]);
++        }
+         if (self->subtitle) {
+             /* translators:
+              * This is "<ungrab accelerator> <subtitle> - <appname>"
