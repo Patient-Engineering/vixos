@@ -57,6 +57,7 @@ OK, running firefox...
 * [ ] P2: clipboard sharing, additional command
 * [ ] P2: networking later NAT/bridge / without
 * [ ] P2: NixOS flake
+* [ ] P2: Add/passthrough USB devices (especially yubikey) (P2 because this is a blocker for me)
 * [ ] P3: randomized shared folders per run
 * [ ] P4: add stuff to VM at runtime (like nix-shell -p)
 * [ ] P4: workspaces?
