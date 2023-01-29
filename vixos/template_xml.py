@@ -69,15 +69,14 @@ gui_devices = """
       <target type='virtio' name='com.redhat.spice.0'/>
     </channel>
     <video>
-      <model type='qxl' ram='524288' vram='524288' vgamem='262144' heads='1' primary='yes'/>
-      <address type='pci' domain='0x0000' bus='0x00' slot='0x02' function='0x0'/>
+      <model type='qxl' primary='yes'/>
     </video>
 """
 
 xml_template = """
 <domain type='kvm' xmlns:qemu='http://libvirt.org/schemas/domain/qemu/1.0'>
   <name>%s</name>
-  <memory unit='GiB'>2</memory>
+  <memory unit='GiB'>4</memory>
   <currentMemory unit='GiB'>1</currentMemory>
   <vcpu>4</vcpu>
   <os>
