@@ -34,14 +34,14 @@ class AppVM:
             shared_dir=self.shared_path,
         )
 
-    def make_nix_config_file(self) -> str:
+    def make_nix_config_file(self, executable: str) -> str:
         with open(f"{self.vixos_path}/base.nix", "w") as configf:
             configf.write(generate_base_nix())
 
         configfile = f"{self.name}.nix"
         configpath = f"{self.vixos_path}/{configfile}"
         with open(configpath, "w") as configf:
-            configf.write(generate_nix(self.name))
+            configf.write(generate_nix(self.name, executable))
         return configfile
 
     def generate_vm(self, name: str) -> Tuple[str, str, str]:
@@ -72,8 +72,8 @@ class AppVM:
 
         return (realpath, reginfo, qcow2)
 
-    def start(self, conn) -> None:
-        config_file = self.make_nix_config_file()
+    def start(self, conn, executable: str) -> None:
+        config_file = self.make_nix_config_file(executable)
         vm_path, reginfo, qcow2 = self.generate_vm(config_file)
         config = self.xml_config(vm_path, reginfo, qcow2)
         dom = conn.createXML(config)
@@ -102,8 +102,10 @@ def run(args):
 
     appvm = AppVM(args.package, args.gui)
 
+    executable = args.executable or args.package
+
     with libvirt_connection("qemu:///system") as conn:
-        appvm.start(conn)
+        appvm.start(conn, executable)
         if not args.background:
             appvm.destroy(conn)
 
@@ -121,14 +123,21 @@ def main():
         help="Name of the nixpkgs package to run.",
     )
     run_parser.add_argument(
-        "--gui", "-g",
+        "--gui",
+        "-g",
         help="If specified, add graphical devices to the VM.",
         action="store_true",
     )
     run_parser.add_argument(
-        "--background", "-b",
+        "--background",
+        "-b",
         help="If specified, run in the background (and don't kill the VM on exit).",
         action="store_true",
+    )
+    run_parser.add_argument(
+        "--executable",
+        "-e",
+        help="Set the executable name to run (by default uses the package name)",
     )
 
     args = parser.parse_args()

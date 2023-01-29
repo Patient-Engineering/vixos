@@ -1,7 +1,7 @@
 import os
 
 
-def generate_nix(package: str) -> str:
+def generate_nix(package: str, executable: str) -> str:
     return """{pkgs, ...}:
 let
   application = "${pkgs.%s}/bin/%s";
@@ -25,7 +25,7 @@ in {
 }
 """ % (
         package,
-        package,
+        executable,
         package,
     )
 
