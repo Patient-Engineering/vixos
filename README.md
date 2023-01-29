@@ -51,16 +51,17 @@ OK, running firefox...
 ## Dev plan
 
 * [x] P0: GUI wayland + sway (host)
-* [x] P1: file share - (/nix/store)
-* [x] P1: net sharing - host ethernet
+* [x] P1: File share - (/nix/store)
+* [x] P1: Net sharing - host ethernet
 * [ ] P1: RO VMs, mountable folders RO/RW
-* [ ] P2: clipboard sharing, additional command
-* [ ] P2: networking later NAT/bridge / without
+* [ ] P2: Clipboard sharing, additional command
+* [ ] P2: Networking later NAT/bridge / without
 * [ ] P2: NixOS flake
 * [ ] P2: Add/passthrough USB devices (especially yubikey) (P2 because this is a blocker for me)
 * [ ] P3: Integrate with https://github.com/talex5/wayland-proxy-virtwl
-* [ ] P3: randomized shared folders per run
-* [ ] P4: add stuff to VM at runtime (like nix-shell -p)
-* [ ] P4: workspaces?
+* [ ] P3: Randomized shared folders per run
+* [ ] P3: Automatically manage VM memory (autobaloon)
+* [ ] P4: Add stuff to VM at runtime (like nix-shell -p)
+* [ ] P4: Workspaces?
 * [ ] P4: "docker cp"
-* [ ] P5: nixos hardening
+* [ ] P5: Nixos hardening
