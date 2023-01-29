@@ -5,7 +5,7 @@ import subprocess
 import libvirt
 from pathlib import Path
 from .template_xml import generate_xml
-from .template_nix import generate_base_nix, generate_nix
+from .template_nix import generate_base_nix, generate_nix, generate_local_nix
 from .libvirt_utils import libvirt_connection
 from typing import Tuple
 
@@ -37,6 +37,10 @@ class AppVM:
     def make_nix_config_file(self, executable: str) -> str:
         with open(f"{self.vixos_path}/base.nix", "w") as configf:
             configf.write(generate_base_nix())
+
+        localf = Path(self.vixos_path) / "local.nix"
+        if not localf.exists():
+            localf.write_text(generate_local_nix())
 
         configfile = f"{self.name}.nix"
         configpath = f"{self.vixos_path}/{configfile}"
@@ -105,9 +109,11 @@ def run(args):
     executable = args.executable or args.package
 
     with libvirt_connection("qemu:///system") as conn:
-        appvm.start(conn, executable)
-        if not args.background:
-            appvm.destroy(conn)
+        try:
+            appvm.start(conn, executable)
+        finally:
+            if not args.background:
+                appvm.destroy(conn)
 
 
 def main():

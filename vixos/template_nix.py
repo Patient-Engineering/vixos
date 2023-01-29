@@ -1,6 +1,13 @@
 import os
 
 
+def generate_local_nix() -> str:
+    return """{
+  # services.xserver.xkbOptions = "ctrl:nocaps";
+  # services.xserver.layout = "pl(intl)";
+}"""
+
+
 def generate_nix(package: str, executable: str) -> str:
     return """{pkgs, ...}:
 let
@@ -17,6 +24,7 @@ in {
   imports = [
     <nixpkgs/nixos/modules/virtualisation/qemu-vm.nix>
     <base.nix>
+    <local.nix>
   ];
 
   environment.systemPackages = [ appRunner pkgs.%s ];
