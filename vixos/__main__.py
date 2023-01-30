@@ -43,9 +43,9 @@ class AppVM:
             localf.write_text(generate_local_nix())
 
         configfile = f"{self.name}.nix"
-        configpath = f"{self.vixos_path}/{configfile}"
-        with open(configpath, "w") as configf:
-            configf.write(generate_nix(self.name, executable))
+        configpath = Path(f"{self.vixos_path}/{configfile}")
+        if not configpath.exists():
+            configpath.write_text(generate_nix(self.name, executable))
         return configfile
 
     def generate_vm(self, name: str) -> Tuple[str, str, str]:

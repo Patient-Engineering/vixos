@@ -71,4 +71,5 @@ OK, running firefox...
 * [ ] P4: Add stuff to VM at runtime (like nix-shell -p)
 * [ ] P4: Workspaces?
 * [ ] P4: "docker cp"
+* [ ] P4: Check linux kernel is new enough (5.16+)
 * [ ] P5: Nixos hardening
