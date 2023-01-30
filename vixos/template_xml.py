@@ -5,34 +5,30 @@
 
 
 def generate_xml(
-    vmname: str,
+    vm_name: str,
     network: str,
     gui: bool,
     vm_path: str,
     reginfo: str,
     image_path: str,
-    shared_dir: str,
+    shared_path: str,
 ) -> str:
     devices = gui_devices if gui else ""
 
-    qemuParams = qemu_params_default
+    qemu_params = qemu_params_default
     if network == "qemu":
-        qemuParams = qemu_params_with_network
+        qemu_params = qemu_params_with_network
     elif network == "libvirt":
         devices += net_devices
 
-    return xml_template % (
-        vmname,
-        vm_path,
-        vm_path,
-        vm_path,
-        reginfo,
-        image_path,
-        shared_dir,
-        shared_dir,
-        shared_dir,
-        devices,
-        qemuParams,
+    return xml_template.format(
+        vm_name=vm_name,
+        vm_path=vm_path,
+        reginfo=reginfo,
+        image_path=image_path,
+        shared_path=shared_path,
+        extra_devices=devices,
+        extra_params=qemu_params,
     )
 
 
@@ -75,15 +71,15 @@ gui_devices = """
 
 xml_template = """
 <domain type='kvm' xmlns:qemu='http://libvirt.org/schemas/domain/qemu/1.0'>
-  <name>%s</name>
+  <name>{vm_name}</name>
   <memory unit='GiB'>4</memory>
   <currentMemory unit='GiB'>1</currentMemory>
   <vcpu>4</vcpu>
   <os>
     <type arch='x86_64'>hvm</type>
-    <kernel>%s/kernel</kernel>
-    <initrd>%s/initrd</initrd>
-    <cmdline>loglevel=4 init=%s/init %s</cmdline>
+    <kernel>{vm_path}/kernel</kernel>
+    <initrd>{vm_path}/initrd</initrd>
+    <cmdline>loglevel=4 init={vm_path}/init {reginfo}</cmdline>
   </os>
   <features>
     <acpi></acpi>
@@ -96,7 +92,7 @@ xml_template = """
     <!-- Fake (because -snapshot) writeback image -->
     <disk type='file' device='disk'>
       <driver name='qemu' type='qcow2' cache='writeback' error_policy='report'/>
-      <source file='%s'/>
+      <source file='{image_path}'/>
       <target dev='vda' bus='virtio'/>
     </disk>
     <serial type='pty'>
@@ -118,19 +114,19 @@ xml_template = """
       <readonly/>
     </filesystem>
     <filesystem type='mount' accessmode='mapped'>
-      <source dir='%s'/>
+      <source dir='{shared_path}'/>
       <target dir='xchg'/> <!-- workaround for nixpkgs/nixos/modules/virtualisation/qemu-vm.nix -->
     </filesystem>
     <filesystem type='mount' accessmode='mapped'>
-      <source dir='%s'/>
+      <source dir='{shared_path}'/>
       <target dir='shared'/> <!-- workaround for nixpkgs/nixos/modules/virtualisation/qemu-vm.nix -->
     </filesystem>
     <filesystem type='mount' accessmode='mapped'>
-      <source dir='%s'/>
+      <source dir='{shared_path}'/>
       <target dir='home'/>
     </filesystem>
-    %s
+    {extra_devices}
   </devices>
-  %s
+  {extra_params}
 </domain>
 """
