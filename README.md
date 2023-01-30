@@ -20,7 +20,7 @@ $ nix develop
 Top-level:
 
 ```
-$ python3 -m vixos.main --help
+$ python3 -m vixos --help
 usage: main.py [-h] {run} ...
 
 VixOS is a secure application launcher.
@@ -36,7 +36,7 @@ subcommands:
 Run:
 
 ```
-$ python3 -m vixos.main run --help
+$ python3 -m vixos run --help
 usage: main.py run [-h] [--gui] [--background] package
 
 positional arguments:
@@ -51,7 +51,7 @@ optional arguments:
 Example:
 
 ```
-$ python3 -m vixos.main run firefox --gui
+$ python3 -m vixos run firefox --gui
 OK, running firefox...
 ```
 
