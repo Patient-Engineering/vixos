@@ -2,6 +2,7 @@
 # To be updated in future versions
 
 # TODO: rewrite this to proper python structures.
+from pathlib import Path
 
 
 def generate_xml(
@@ -12,6 +13,8 @@ def generate_xml(
     reginfo: str,
     image_path: str,
     shared_path: str,
+    ro_rootfs: bool,
+    rw_paths: list[str],
 ) -> str:
     devices = gui_devices if gui else ""
 
@@ -21,12 +24,30 @@ def generate_xml(
     elif network == "libvirt":
         devices += net_devices
 
+    filesystems = default_filesystems
+
+    for guest_path in rw_paths:
+        # FIXME: dirty hack to avoid appending absolute path
+        host_path = Path(shared_path) / guest_path[1:]
+        host_path.mkdir(exist_ok=True, parents=True)
+        print("host_path", host_path, "guest_path", guest_path)
+        entry = mountable_dir.format(
+            src_path=host_path,
+            dst_path=guest_path,
+        )
+        filesystems += entry
+
+    # create dirs
+    (Path(shared_path) / "home").mkdir(exist_ok=True)
+    (Path(shared_path) / "tmp").mkdir(exist_ok=True)
+
     return xml_template.format(
         vm_name=vm_name,
         vm_path=vm_path,
         reginfo=reginfo,
         image_path=image_path,
-        shared_path=shared_path,
+        ro_rootfs="<readonly/>" if ro_rootfs else "",
+        filesystems=filesystems.format(shared_path=shared_path),
         extra_devices=devices,
         extra_params=qemu_params,
     )
@@ -69,6 +90,35 @@ gui_devices = """
     </video>
 """
 
+default_filesystems = """
+    <filesystem type='mount' accessmode='passthrough'>
+      <source dir='/nix/store'/>
+      <target dir='nix-store'/>
+      <readonly/>
+    </filesystem>
+    <filesystem type='mount' accessmode='mapped'>
+      <source dir='{shared_path}/tmp'/>
+      <target dir='xchg'/> <!-- workaround for nixpkgs/nixos/modules/virtualisation/qemu-vm.nix -->
+    </filesystem>
+    <filesystem type='mount' accessmode='mapped'>
+      <source dir='{shared_path}/tmp'/>
+      <target dir='shared'/> <!-- workaround for nixpkgs/nixos/modules/virtualisation/qemu-vm.nix -->
+    </filesystem>
+    <filesystem type='mount' accessmode='mapped'>
+      <source dir='{shared_path}/home'/>
+      <target dir='home'/>
+    </filesystem>
+"""
+
+mountable_dir = """
+<filesystem type='mount' accessmode='passthrough'>
+  <binary path='/run/current-system/sw/bin/virtiofsd' xattr='on' />
+  <driver type='virtiofs' queue='1024'/>
+  <source dir='{src_path}'/>
+  <target dir='{dst_path}'/>
+</filesystem>
+"""
+
 xml_template = """
 <domain type='kvm' xmlns:qemu='http://libvirt.org/schemas/domain/qemu/1.0'>
   <name>{vm_name}</name>
@@ -98,6 +148,7 @@ xml_template = """
       <driver name='qemu' type='qcow2' cache='writeback' error_policy='report'/>
       <source file='{image_path}'/>
       <target dev='vda' bus='virtio'/>
+      {ro_rootfs}
     </disk>
     <serial type='pty'>
       <source path='/dev/pts/0'/>
@@ -111,24 +162,7 @@ xml_template = """
       <target type='serial' port='0'/>
       <alias name='serial0'/>
     </console>
-    <!-- filesystems -->
-    <filesystem type='mount' accessmode='passthrough'>
-      <source dir='/nix/store'/>
-      <target dir='nix-store'/>
-      <readonly/>
-    </filesystem>
-    <filesystem type='mount' accessmode='mapped'>
-      <source dir='{shared_path}'/>
-      <target dir='xchg'/> <!-- workaround for nixpkgs/nixos/modules/virtualisation/qemu-vm.nix -->
-    </filesystem>
-    <filesystem type='mount' accessmode='mapped'>
-      <source dir='{shared_path}'/>
-      <target dir='shared'/> <!-- workaround for nixpkgs/nixos/modules/virtualisation/qemu-vm.nix -->
-    </filesystem>
-    <filesystem type='mount' accessmode='mapped'>
-      <source dir='{shared_path}'/>
-      <target dir='home'/>
-    </filesystem>
+    {filesystems}
     {extra_devices}
   </devices>
   {extra_params}

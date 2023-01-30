@@ -12,7 +12,7 @@ from .ssh import SshManager
 
 
 class AppVM:
-    def __init__(self, name: str, gui: bool) -> None:
+    def __init__(self, name: str, gui: bool, ro_rootfs: bool, rw_paths: list[str]) -> None:
         self.name = name
         self.is_gui = gui
         # TODO: use pathlib consistently in the project
@@ -21,6 +21,8 @@ class AppVM:
         self.shared_path = self.vixos_path + "/shared"
         Path(self.shared_path).mkdir(exist_ok=True)
         self.ssh = SshManager(Path(self.vixos_path))
+        self.ro_rootfs = ro_rootfs
+        self.rw_paths = rw_paths
 
     @property
     def vm_name(self):
@@ -35,6 +37,8 @@ class AppVM:
             reginfo=reginfo,
             image_path=image_path,
             shared_path=self.shared_path,
+            ro_rootfs=self.ro_rootfs,
+            rw_paths=self.rw_paths,
         )
 
     def make_nix_config_file(self, executable: str) -> str:
@@ -52,7 +56,7 @@ class AppVM:
             configpath.write_text(config)
         return configfile
 
-    def generate_vm(self, name: str) -> Tuple[str, str, str]:
+    def generate_vm(self, name: str) -> tuple[str, str, str]:
         subprocess.check_call(
             [
                 "nix-build",
@@ -108,7 +112,7 @@ class AppVM:
 def run(args):
     print(f"OK, running {args.package}...")
 
-    appvm = AppVM(args.package, args.gui)
+    appvm = AppVM(args.package, args.gui, args.ro_rootfs, args.rw_path)
 
     executable = args.executable or args.package
 
@@ -148,6 +152,19 @@ def main():
         "--executable",
         "-e",
         help="Set the executable name to run (by default uses the package name)",
+    )
+    run_parser.add_argument(
+        "--ro-rootfs",
+        "-r",
+        help="If specified, makes guest root filesystem read-only.",
+        action='store_true',
+    )
+    run_parser.add_argument(
+        "--rw-path",
+        "-w",
+        help="If specified, makes guest path read-write.",
+        action='append',
+        default=[],
     )
 
     args = parser.parse_args()
