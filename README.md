@@ -10,6 +10,13 @@ The goal of the project is to create a practical virtualisation tool. I want to 
 
 ## Usage
 
+Enter development shell:
+
+```
+$ nix develop
+[vixos]$
+```
+
 Top-level:
 
 ```
