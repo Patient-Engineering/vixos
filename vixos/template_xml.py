@@ -69,7 +69,7 @@ gui_devices = """
       <target type='virtio' name='com.redhat.spice.0'/>
     </channel>
     <video>
-      <model type='qxl' primary='yes'/>
+      <model type='virtio' heads='1' primary='yes'/>
     </video>
 """
 
