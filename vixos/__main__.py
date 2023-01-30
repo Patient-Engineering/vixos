@@ -20,18 +20,18 @@ class AppVM:
         Path(self.shared_path).mkdir(exist_ok=True)
 
     @property
-    def vmname(self):
+    def vm_name(self):
         return f"vixos_{self.name}"
 
     def xml_config(self, vm_path: str, reginfo: str, image_path: str) -> str:
         return generate_xml(
-            vmname=self.vmname,
+            vm_name=self.vm_name,
             network="libvirt",
             gui=self.is_gui,
             vm_path=vm_path,
             reginfo=reginfo,
             image_path=image_path,
-            shared_dir=self.shared_path,
+            shared_path=self.shared_path,
         )
 
     def make_nix_config_file(self, executable: str) -> str:
@@ -86,15 +86,15 @@ class AppVM:
 
         print(f"Guest {dom.name()} has booted")
         if self.is_gui:
-            subprocess.check_call(["virt-viewer", "-c", conn.getURI(), self.vmname])
+            subprocess.check_call(["virt-viewer", "-c", conn.getURI(), self.vm_name])
         else:
             subprocess.check_call(
-                ["virsh", "-c", conn.getURI(), "console", self.vmname]
+                ["virsh", "-c", conn.getURI(), "console", self.vm_name]
             )
 
     def destroy(self, conn):
         try:
-            dom = conn.lookupByName(self.vmname)
+            dom = conn.lookupByName(self.vm_name)
             print(f"Destroying {dom.name()}")
             dom.destroy()
         except libvirt.libvirtError:
