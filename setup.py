@@ -14,7 +14,7 @@ setup(
     packages=["vixos"],
     entry_points={
         "console_scripts": [
-            "vixos = vixos.main:main",
+            "vixos = vixos.__main__:main",
         ],
     },
     license="GPLv3",
