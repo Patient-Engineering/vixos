@@ -60,6 +60,8 @@ base_nix = """{pkgs, ...}:
 
   services.spice-vdagentd.enable = true;
 
+  # TODO: this is temporary, for development and debugging.
+  users.users.root = { initialPassword = "root"; };
   users.extraUsers.user = {
     uid = %s;
     isNormalUser = true;
