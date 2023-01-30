@@ -88,6 +88,10 @@ xml_template = """
   <on_poweroff>destroy</on_poweroff>
   <on_reboot>restart</on_reboot>
   <on_crash>destroy</on_crash>
+  <memoryBacking>
+    <source type='memfd'/>
+    <access mode='shared'/>
+  </memoryBacking>
   <devices>
     <!-- Fake (because -snapshot) writeback image -->
     <disk type='file' device='disk'>

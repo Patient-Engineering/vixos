@@ -73,3 +73,9 @@ OK, running firefox...
 * [ ] P4: "docker cp"
 * [ ] P4: Check linux kernel is new enough (5.16+)
 * [ ] P5: Nixos hardening
+
+## Docs
+
+Currently there is no real user-facing documentation, but developers sometimes share useful
+information in [the docs](./docs) directory.
+
