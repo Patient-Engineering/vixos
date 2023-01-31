@@ -163,12 +163,25 @@ def run(args):
                 appvm.destroy(conn)
 
 
+def list_vms(args):
+    with libvirt_connection("qemu:///system") as conn:
+        domains = conn.listAllDomains()
+        if domains is None:
+            print("Failed to get a list of domain IDs")
+            return
+
+        for dom in domains:
+            if dom.name().startswith("vixos_"):
+                print(dom.name())
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="VixOS is a secure application launcher."
     )
 
     subparsers = parser.add_subparsers(title="subcommands", required=True)
+
     run_parser = subparsers.add_parser("run", help="Run a nixpkgs program")
     run_parser.set_defaults(func=run)
     run_parser.add_argument(
@@ -192,6 +205,9 @@ def main():
         "-e",
         help="Set the executable name to run (by default uses the package name)",
     )
+
+    list_parser = subparsers.add_parser("list", help="List available vixos VMs")
+    list_parser.set_defaults(func=list_vms)
 
     args = parser.parse_args()
     args.func(args)
