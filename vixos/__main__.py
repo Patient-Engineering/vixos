@@ -3,11 +3,12 @@ import os
 import argparse
 import subprocess
 import libvirt
+import time
 from pathlib import Path
 from .template_xml import generate_xml
 from .template_nix import generate_base_nix, generate_nix, generate_local_nix
 from .libvirt_utils import libvirt_connection
-from typing import Tuple
+from typing import Tuple, Optional
 from .ssh import SshManager
 
 
@@ -23,8 +24,36 @@ class AppVM:
         self.ssh = SshManager(Path(self.vixos_path))
 
     @property
-    def vm_name(self):
+    def vm_name(self) -> str:
         return f"vixos_{self.name}"
+
+    def try_get_ip_address(self, dom) -> Optional[str]:
+        try:
+            ifaces = dom.interfaceAddresses(
+                libvirt.VIR_DOMAIN_INTERFACE_ADDRESSES_SRC_LEASE, 0
+            )
+        except:
+            return None
+
+        ipv4_addrs = []
+        for val in ifaces.values():
+            for ipaddr in val.get("addrs", []):
+                if ipaddr["type"] == libvirt.VIR_IP_ADDR_TYPE_IPV4:
+                    ipv4_addrs.append(ipaddr["addr"])
+
+        if len(ipv4_addrs) > 1:
+            raise ValueError("Domain has more than one IPv4 address")
+        if len(ipv4_addrs) < 1:
+            return None
+        return ipv4_addrs[0]
+
+    def get_ip_address(self, dom, retries=20) -> str:
+        for i in range(retries):
+            addr = self.try_get_ip_address(dom)
+            if addr is not None:
+                return addr
+            time.sleep(1)
+        raise ValueError(f"Couldn't get ip address in {retries} tries.")
 
     def xml_config(self, vm_path: str, reginfo: str, image_path: str) -> str:
         return generate_xml(
@@ -80,6 +109,22 @@ class AppVM:
 
         return (realpath, reginfo, qcow2)
 
+    def ssh_attach_user(self, dom) -> None:
+        ip = self.get_ip_address(dom)
+        # TODO: use a hardcoded known host key here instead?
+        subprocess.check_call(
+            [
+                "ssh",
+                f"user@{ip}",
+                "-i",
+                str(self.ssh.privkey_path),
+                "-o",
+                "StrictHostKeyChecking=no",
+                "-o",
+                "UserKnownHostsFile=/dev/null",
+            ]
+        )
+
     def start(self, conn, executable: str) -> None:
         config_file = self.make_nix_config_file(executable)
         vm_path, reginfo, qcow2 = self.generate_vm(config_file)
@@ -92,9 +137,7 @@ class AppVM:
         if self.is_gui:
             subprocess.check_call(["virt-viewer", "-c", conn.getURI(), self.vm_name])
         else:
-            subprocess.check_call(
-                ["virsh", "-c", conn.getURI(), "console", self.vm_name]
-            )
+            self.ssh_attach_user(dom)
 
     def destroy(self, conn):
         try:

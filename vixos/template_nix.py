@@ -33,6 +33,11 @@ in {
         "%s"
       ];
   };
+  users.users.root = {
+      openssh.authorizedKeys.keys = [
+        "%s"
+      ];
+  };
 
   environment.systemPackages = [ appRunner pkgs.%s ];
 
@@ -41,6 +46,7 @@ in {
 """ % (
         package,
         executable,
+        pubkey,
         pubkey,
         package,
     )
@@ -69,7 +75,11 @@ base_nix = """{pkgs, ...}:
   services.spice-vdagentd.enable = true;
 
   # enable sshd on every guest.
-  services.sshd.enable = true;
+  services.openssh = {
+    enable = true;
+    passwordAuthentication = false;
+    kbdInteractiveAuthentication = false;
+  };
 
   # TODO: this is temporary, for development and debugging.
   users.users.root = { initialPassword = "root"; };
