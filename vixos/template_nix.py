@@ -1,4 +1,5 @@
 import os
+from typing import List
 
 
 def generate_local_nix() -> str:
@@ -8,7 +9,8 @@ def generate_local_nix() -> str:
 }"""
 
 
-def generate_nix(package: str, executable: str, pubkey: str) -> str:
+def generate_nix(package: str, executable: str, pubkey: str, rw_paths: List[str]) -> str:
+    mount_script = "\n".join([f"mount -t virtiofs {path} {path}" for path in rw_paths])
     return """{pkgs, ...}:
 let
   application = "${pkgs.%s}/bin/%s";
@@ -37,12 +39,19 @@ in {
   environment.systemPackages = [ appRunner pkgs.%s ];
 
   services.xserver.displayManager.sessionCommands = "${appRunner}/bin/app &";
+
+  system.activationScripts = {
+    virtio.text = ''
+      %s
+    '';
+  };
 }
 """ % (
         package,
         executable,
         pubkey,
         package,
+        mount_script,
     )
 
 

@@ -24,13 +24,12 @@ def generate_xml(
     elif network == "libvirt":
         devices += net_devices
 
-    filesystems = default_filesystems
+    filesystems = default_filesystems.format(shared_path=shared_path)
 
     for guest_path in rw_paths:
-        # FIXME: dirty hack to avoid appending absolute path
+        # TODO: dirty hack to avoid appending absolute path
         host_path = Path(shared_path) / guest_path[1:]
         host_path.mkdir(exist_ok=True, parents=True)
-        print("host_path", host_path, "guest_path", guest_path)
         entry = mountable_dir.format(
             src_path=host_path,
             dst_path=guest_path,
@@ -47,7 +46,7 @@ def generate_xml(
         reginfo=reginfo,
         image_path=image_path,
         ro_rootfs="<readonly/>" if ro_rootfs else "",
-        filesystems=filesystems.format(shared_path=shared_path),
+        filesystems=filesystems,
         extra_devices=devices,
         extra_params=qemu_params,
     )
@@ -111,12 +110,12 @@ default_filesystems = """
 """
 
 mountable_dir = """
-<filesystem type='mount' accessmode='passthrough'>
-  <binary path='/run/current-system/sw/bin/virtiofsd' xattr='on' />
-  <driver type='virtiofs' queue='1024'/>
-  <source dir='{src_path}'/>
-  <target dir='{dst_path}'/>
-</filesystem>
+    <filesystem type='mount' accessmode='passthrough'>
+      <binary path='/run/current-system/sw/bin/virtiofsd' xattr='on' />
+      <driver type='virtiofs' queue='1024'/>
+      <source dir='{src_path}'/>
+      <target dir='{dst_path}'/>
+    </filesystem>
 """
 
 xml_template = """

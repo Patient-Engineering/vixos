@@ -52,7 +52,7 @@ class AppVM:
         configfile = f"{self.name}.nix"
         configpath = Path(f"{self.vixos_path}/{configfile}")
         if not configpath.exists():
-            config = generate_nix(self.name, executable, self.ssh.pubkey_text)
+            config = generate_nix(self.name, executable, self.ssh.pubkey_text, self.rw_paths)
             configpath.write_text(config)
         return configfile
 
