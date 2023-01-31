@@ -53,6 +53,8 @@ def generate_base_nix():
 
 base_nix = """{pkgs, ...}:
 {
+  boot.tmpOnTmpfs = true;
+
   services.xserver = {
     enable = true;
     desktopManager.xterm.enable = false;
