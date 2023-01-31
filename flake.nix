@@ -16,6 +16,7 @@
           devShell = pkgs.mkShell {
             packages = with pkgs; [
               python39Packages.libvirt
+              python39Packages.pycryptodome
               ((import ./virt-viewer-without-menu) pkgs)
             ];
           };

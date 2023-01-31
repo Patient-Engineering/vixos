@@ -8,7 +8,7 @@ def generate_local_nix() -> str:
 }"""
 
 
-def generate_nix(package: str, executable: str) -> str:
+def generate_nix(package: str, executable: str, pubkey: str) -> str:
     return """{pkgs, ...}:
 let
   application = "${pkgs.%s}/bin/%s";
@@ -27,6 +27,13 @@ in {
     <local.nix>
   ];
 
+  # TODO: this is currently hilariously insecure, VMs can login to others.
+  users.extraUsers.user = {
+      openssh.authorizedKeys.keys = [
+        "%s"
+      ];
+  };
+
   environment.systemPackages = [ appRunner pkgs.%s ];
 
   services.xserver.displayManager.sessionCommands = "${appRunner}/bin/app &";
@@ -34,6 +41,7 @@ in {
 """ % (
         package,
         executable,
+        pubkey,
         package,
     )
 
@@ -59,6 +67,9 @@ base_nix = """{pkgs, ...}:
   };
 
   services.spice-vdagentd.enable = true;
+
+  # enable sshd on every guest.
+  services.sshd.enable = true;
 
   # TODO: this is temporary, for development and debugging.
   users.users.root = { initialPassword = "root"; };
