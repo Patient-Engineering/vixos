@@ -137,11 +137,13 @@ class AppVM:
         dom = conn.createXML(config)
         if not dom:
             raise SystemExit("Failed to create a domain from an XML definition")
-
         print(f"Guest {dom.name()} has booted")
+
+    def attach(self, conn, is_gui: bool) -> None:
         if is_gui:
             subprocess.check_call(["virt-viewer", "-c", conn.getURI(), self.vm_name])
         else:
+            dom = conn.lookupByName(self.vm_name)
             self.ssh_attach_user(dom, True)
 
     def destroy(self, conn):
@@ -155,9 +157,7 @@ class AppVM:
 
 def run(args) -> None:
     print(f"OK, running {args.package}...")
-
     appvm = AppVM(args.package)
-
     executable = args.executable or args.package
 
     with libvirt_connection("qemu:///system") as conn:
@@ -165,14 +165,15 @@ def run(args) -> None:
             appvm.start(conn, args.gui, executable)
         finally:
             if not args.background:
+                appvm.attach(conn, args.gui)
                 appvm.destroy(conn)
 
 
 def shell(args) -> None:
+    appvm = AppVM(args.package)
+
     with libvirt_connection("qemu:///system") as conn:
-        appvm = AppVM(args.package)
-        dom = conn.lookupByName(appvm.vm_name)
-        appvm.ssh_attach_user(dom, False)
+        appvm.attach(conn, False)
 
 
 def list_vms(args) -> None:
