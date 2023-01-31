@@ -8,16 +8,19 @@ from .template_xml import generate_xml
 from .template_nix import generate_base_nix, generate_nix, generate_local_nix
 from .libvirt_utils import libvirt_connection
 from typing import Tuple
+from .ssh import SshManager
 
 
 class AppVM:
     def __init__(self, name: str, gui: bool) -> None:
         self.name = name
         self.is_gui = gui
+        # TODO: use pathlib consistently in the project
         self.vixos_path = os.path.expanduser("~/vixos")
         Path(self.vixos_path).mkdir(exist_ok=True)
         self.shared_path = self.vixos_path + "/shared"
         Path(self.shared_path).mkdir(exist_ok=True)
+        self.ssh = SshManager(Path(self.vixos_path))
 
     @property
     def vm_name(self):
@@ -45,7 +48,8 @@ class AppVM:
         configfile = f"{self.name}.nix"
         configpath = Path(f"{self.vixos_path}/{configfile}")
         if not configpath.exists():
-            configpath.write_text(generate_nix(self.name, executable))
+            config = generate_nix(self.name, executable, self.ssh.pubkey_text)
+            configpath.write_text(config)
         return configfile
 
     def generate_vm(self, name: str) -> Tuple[str, str, str]:
