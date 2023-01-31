@@ -13,13 +13,14 @@ from .ssh import SshManager
 
 
 class AppVM:
-    def __init__(self, name: str, gui: bool) -> None:
+    def __init__(self, name: str) -> None:
         self.name = name
-        self.is_gui = gui
         # TODO: use pathlib consistently in the project
         self.vixos_path = os.path.expanduser("~/vixos")
-        Path(self.vixos_path).mkdir(exist_ok=True)
         self.shared_path = self.vixos_path + "/shared"
+
+        # TODO: maybe move non-pure init actions to another functions?
+        Path(self.vixos_path).mkdir(exist_ok=True)
         Path(self.shared_path).mkdir(exist_ok=True)
         self.ssh = SshManager(Path(self.vixos_path))
 
@@ -47,19 +48,21 @@ class AppVM:
             return None
         return ipv4_addrs[0]
 
-    def get_ip_address(self, dom, retries=20) -> str:
-        for i in range(retries):
+    def get_ip_address(self, dom, retries: int = 25) -> str:
+        for _ in range(retries):
             addr = self.try_get_ip_address(dom)
             if addr is not None:
                 return addr
             time.sleep(1)
         raise ValueError(f"Couldn't get ip address in {retries} tries.")
 
-    def xml_config(self, vm_path: str, reginfo: str, image_path: str) -> str:
+    def xml_config(
+        self, vm_path: str, is_gui: bool, reginfo: str, image_path: str
+    ) -> str:
         return generate_xml(
             vm_name=self.vm_name,
             network="libvirt",
-            gui=self.is_gui,
+            gui=is_gui,
             vm_path=vm_path,
             reginfo=reginfo,
             image_path=image_path,
@@ -109,8 +112,10 @@ class AppVM:
 
         return (realpath, reginfo, qcow2)
 
-    def ssh_attach_user(self, dom) -> None:
-        ip = self.get_ip_address(dom)
+    def ssh_attach_user(self, dom, wait: bool) -> None:
+        retries = 20 if wait else 1
+        ip = self.get_ip_address(dom, retries)
+        assert ip is not None
         # TODO: use a hardcoded known host key here instead?
         subprocess.check_call(
             [
@@ -125,19 +130,19 @@ class AppVM:
             ]
         )
 
-    def start(self, conn, executable: str) -> None:
+    def start(self, conn, is_gui: bool, executable: str) -> None:
         config_file = self.make_nix_config_file(executable)
         vm_path, reginfo, qcow2 = self.generate_vm(config_file)
-        config = self.xml_config(vm_path, reginfo, qcow2)
+        config = self.xml_config(vm_path, is_gui, reginfo, qcow2)
         dom = conn.createXML(config)
         if not dom:
             raise SystemExit("Failed to create a domain from an XML definition")
 
         print(f"Guest {dom.name()} has booted")
-        if self.is_gui:
+        if is_gui:
             subprocess.check_call(["virt-viewer", "-c", conn.getURI(), self.vm_name])
         else:
-            self.ssh_attach_user(dom)
+            self.ssh_attach_user(dom, True)
 
     def destroy(self, conn):
         try:
@@ -148,22 +153,29 @@ class AppVM:
             print(f"Destroying failed (probably domain already destroyed).")
 
 
-def run(args):
+def run(args) -> None:
     print(f"OK, running {args.package}...")
 
-    appvm = AppVM(args.package, args.gui)
+    appvm = AppVM(args.package)
 
     executable = args.executable or args.package
 
     with libvirt_connection("qemu:///system") as conn:
         try:
-            appvm.start(conn, executable)
+            appvm.start(conn, args.gui, executable)
         finally:
             if not args.background:
                 appvm.destroy(conn)
 
 
-def list_vms(args):
+def shell(args) -> None:
+    with libvirt_connection("qemu:///system") as conn:
+        appvm = AppVM(args.package)
+        dom = conn.lookupByName(appvm.vm_name)
+        appvm.ssh_attach_user(dom, False)
+
+
+def list_vms(args) -> None:
     with libvirt_connection("qemu:///system") as conn:
         domains = conn.listAllDomains()
         if domains is None:
@@ -208,6 +220,14 @@ def main():
 
     list_parser = subparsers.add_parser("list", help="List available vixos VMs")
     list_parser.set_defaults(func=list_vms)
+
+    shell_parser = subparsers.add_parser("shell", help="Run a shell in a running VM")
+    shell_parser.set_defaults(func=shell)
+    shell_parser.add_argument(
+        "package",
+        # Yes, this parameter is basically a "workspace" and not a package.
+        help="Attach to a VM responsible for this package.",
+    )
 
     args = parser.parse_args()
     args.func(args)

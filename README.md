@@ -20,39 +20,45 @@ $ nix develop
 Top-level:
 
 ```
-$ python3 -m vixos --help
-usage: main.py [-h] {run} ...
+[vixos]$ python3 -m vixos --help
+usage: __main__.py [-h] {run,list,shell} ...
 
 VixOS is a secure application launcher.
 
 optional arguments:
-  -h, --help  show this help message and exit
+  -h, --help        show this help message and exit
 
 subcommands:
-  {run}
-    run       Run a nixpkgs program
+  {run,list,shell}
+    run             Run a nixpkgs program
+    list            List available vixos VMs
+    shell           Run a shell in a running VM
 ```
 
 Run:
 
 ```
-$ python3 -m vixos run --help
-usage: main.py run [-h] [--gui] [--background] package
-
-positional arguments:
-  package           Name of the nixpkgs package to run.
-
-optional arguments:
-  -h, --help        show this help message and exit
-  --gui, -g         If specified, add graphical devices to the VM.
-  --background, -b  If specified, run in the background (and don't kill the VM on exit).
+usage: __main__.py run [-h] [--gui] [--background] [--executable EXECUTABLE] package
 ```
 
 Example:
 
 ```
-$ python3 -m vixos run firefox --gui
+[vixos]$ python3 -m vixos run firefox --gui
 OK, running firefox...
+```
+
+List:
+
+```
+[vixos]$ python3 -m vixos list
+vixos_firefox
+```
+
+Shell:
+
+```
+python3 -m vixos shell firefox
 ```
 
 ## Dev plan
