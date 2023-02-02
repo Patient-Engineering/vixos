@@ -17,6 +17,7 @@
             packages = with pkgs; [
               python39Packages.libvirt
               python39Packages.pycryptodome
+              python39Packages.paramiko
               ((import ./virt-viewer-without-menu) pkgs)
             ];
           };
