@@ -4,6 +4,7 @@ import argparse
 import subprocess
 import libvirt
 import time
+import tempfile
 from pathlib import Path
 from .template_xml import generate_xml
 from .template_nix import generate_base_nix, generate_nix, generate_local_nix
@@ -115,18 +116,29 @@ class AppVM:
         retries = 20 if wait else 1
         ip = self.get_ip_address(dom, retries)
         assert ip is not None
-        # TODO: use a hardcoded known host key here instead?
-        subprocess.check_call(
-            [
-                "ssh",
-                f"user@{ip}",
-                "-i",
-                str(self.ssh.privkey_path),
-                "-o",
-                "StrictHostKeyChecking=no",
-                "-o",
-                "UserKnownHostsFile=/dev/null",
-            ]
+        self.ssh.interactive_session("user", ip)
+
+    # TODO extremely ugly, refactor later (duplicated with get_ip_address)s
+    def get_ip_address_from_conn(self, conn) -> str:
+        dom = conn.lookupByName(self.vm_name)
+        ip = self.try_get_ip_address(dom)
+        assert ip is not None  # TODO handle more gracefully
+        return ip
+
+    def get(self, conn, vm_path: str, local_path: str) -> None:
+        self.ssh.get_from_remote(
+            "user",
+            self.get_ip_address_from_conn(conn),
+            vm_path,
+            local_path,
+        )
+
+    def put(self, conn, local_path: str, vm_path: str) -> None:
+        self.ssh.put_in_remote(
+            "user",
+            self.get_ip_address_from_conn(conn),
+            local_path,
+            vm_path,
         )
 
     def start(self, conn, is_gui: bool, executable: str) -> None:
@@ -187,6 +199,39 @@ def list_vms(args) -> None:
                 print(dom.name())
 
 
+def parse_file_specification(spec: str) -> Tuple[Optional[str], str]:
+    if ":" not in spec:
+        # local file spec, like `vmname`
+        return (None, spec)
+    if spec.count(":") > 1:
+        raise RuntimeError("More than one `:` in specification found")
+    vm_name, path = spec.split(":")
+    return (vm_name, path)
+
+
+def copy(args) -> None:
+    source_vm, source_path = parse_file_specification(args.source)
+    dest_vm, dest_path = parse_file_specification(args.destination)
+
+    with libvirt_connection("qemu:///system") as conn:
+        if source_vm is None and dest_vm is None:
+            print("Just use `cp`...")
+            return
+        if source_vm is not None and dest_vm is not None:
+            source = AppVM(source_vm)
+            dest = AppVM(dest_vm)
+            with tempfile.NamedTemporaryFile() as tempf:
+                source.get(conn, source_path, tempf.name)
+                dest.put(conn, tempf.name, dest_path)
+                return
+        if source_vm is not None:
+            source = AppVM(source_vm)
+            source.get(conn, source_path, dest_path)
+        if dest_vm is not None:
+            dest = AppVM(dest_vm)
+            dest.put(conn, source_path, dest_path)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="VixOS is a secure application launcher."
@@ -228,6 +273,20 @@ def main():
         # Yes, this parameter is basically a "workspace" and not a package.
         help="Attach to a VM responsible for this package.",
     )
+
+    cp_parser = subparsers.add_parser(
+        "cp",
+        help="Copy from/to VMs",
+    )
+    cp_parser.add_argument(
+        "source",
+        help="Source specification, like `vmname:/etc/passwd` or `mylocalfile`.",
+    )
+    cp_parser.add_argument(
+        "destination",
+        help="Destination specification, like `vmname:/tmp/file` or `mylocalfile`.",
+    )
+    cp_parser.set_defaults(func=copy)
 
     args = parser.parse_args()
     args.func(args)
