@@ -6,7 +6,6 @@
 
 def generate_xml(
     vm_name: str,
-    network: str,
     gui: bool,
     vm_path: str,
     reginfo: str,
@@ -15,12 +14,6 @@ def generate_xml(
 ) -> str:
     devices = gui_devices if gui else ""
 
-    qemu_params = qemu_params_default
-    if network == "qemu":
-        qemu_params = qemu_params_with_network
-    elif network == "libvirt":
-        devices += net_devices
-
     return xml_template.format(
         vm_name=vm_name,
         vm_path=vm_path,
@@ -28,31 +21,8 @@ def generate_xml(
         image_path=image_path,
         shared_path=shared_path,
         extra_devices=devices,
-        extra_params=qemu_params,
     )
 
-
-qemu_params_default = """
-  <qemu:commandline>
-    <qemu:arg value='-snapshot'/>
-  </qemu:commandline>
-"""
-
-qemu_params_with_network = """
-  <qemu:commandline>
-    <qemu:arg value='-device'/>
-    <qemu:arg value='e1000,netdev=net0,bus=pci.0,addr=0x10'/>
-    <qemu:arg value='-netdev'/>
-    <qemu:arg value='user,id=net0'/>
-    <qemu:arg value='-snapshot'/>
-  </qemu:commandline>
-"""
-
-net_devices = """
-    <interface type='network'>
-      <source network='default'/>
-    </interface>
-"""
 
 gui_devices = """
     <!-- Graphical console -->
@@ -79,6 +49,7 @@ xml_template = """
     <type arch='x86_64'>hvm</type>
     <kernel>{vm_path}/kernel</kernel>
     <initrd>{vm_path}/initrd</initrd>
+    <!-- TODO remove console=ttyS0 by default to speed up boot times -->
     <cmdline>loglevel=4 init={vm_path}/init console=ttyS0 {reginfo}</cmdline>
   </os>
   <features>
@@ -98,6 +69,7 @@ xml_template = """
       <driver name='qemu' type='qcow2' cache='writeback' error_policy='report'/>
       <source file='{image_path}'/>
       <target dev='vda' bus='virtio'/>
+      <transient/>
     </disk>
     <serial type='pty'>
       <source path='/dev/pts/0'/>
@@ -129,8 +101,10 @@ xml_template = """
       <source dir='{shared_path}'/>
       <target dir='home'/>
     </filesystem>
+    <interface type='network'>
+      <source network='default'/>
+    </interface>
     {extra_devices}
   </devices>
-  {extra_params}
 </domain>
 """
