@@ -104,18 +104,6 @@ startup = do
   spawn "while [ 1 ]; do ${pkgs.spice-vdagent}/bin/spice-vdagent -x; done &"
   '';
 
-  systemd.services.home-user-build-xmonad = {
-    description = "Link xmonad configuration";
-    serviceConfig = {
-      ExecStart = "/bin/sh -c 'mkdir -p /home/user/.xmonad && ln -sf /etc/xmonad.hs /home/user/.xmonad/xmonad.hs && /run/current-system/sw/bin/xmonad --recompile'";
-      RemainAfterExit = "yes";
-      User = "user";
-      Restart = "on-failure";
-      TimeoutSec = 10;
-    };
-    wantedBy = [ "multi-user.target" ];
-  };
-
   systemd.services.mount-home-user = {
     description = "Mount /home/user (crutch)";
     serviceConfig = {
@@ -127,13 +115,6 @@ startup = do
     wantedBy = [ "sysinit.target" ];
   };
 
-  systemd.user.services."xrandr" = {
-    serviceConfig = {
-      StartLimitBurst = 100;
-    };
-    script = "${pkgs.xorg.xrandr}/bin/xrandr --output Virtual-1 --mode $(${pkgs.xorg.xrandr}/bin/xrandr | grep '   ' | head -n 2 | tail -n 1 | ${pkgs.gawk}/bin/awk '{ print $1 }')";
-  };
-
   services.getty.autologinUser = "user";
 
   systemd.services."serial-getty@ttyS0" = {
@@ -142,34 +123,19 @@ startup = do
     serviceConfig.Restart = "always";
   };
 
+  systemd.user.services."xrandr" = {
+    serviceConfig = {
+      StartLimitBurst = 100;
+    };
+    script = "${pkgs.xorg.xrandr}/bin/xrandr --output Virtual-1 --mode $(${pkgs.xorg.xrandr}/bin/xrandr | grep '   ' | head -n 2 | tail -n 1 | ${pkgs.gawk}/bin/awk '{ print $1 }')";
+  };
+
   systemd.user.timers."xrandr" = {
     description = "Auto update resolution crutch";
     timerConfig = {
       OnBootSec = "1s";
       OnUnitInactiveSec = "1s";
       Unit = "xrandr.service";
-      AccuracySec = "1us";
-    };
-    wantedBy = ["timers.target"];
-  };
-
-  systemd.services."autoballoon" = {
-    serviceConfig = {
-      StartLimitBurst = 100;
-    };
-    script = ''
-      ${pkgs.procps}/bin/free -m | grep Mem | \
-        ${pkgs.gawk}/bin/awk '{print $2 "-" $4}' | \
-        ${pkgs.bc}/bin/bc > /home/user/.memory_used
-    '';
-  };
-
-  systemd.timers."autoballoon" = {
-    description = "Auto update resolution crutch";
-    timerConfig = {
-      OnBootSec = "1s";
-      OnUnitInactiveSec = "1s";
-      Unit = "autoballoon.service";
       AccuracySec = "1us";
     };
     wantedBy = ["timers.target"];
