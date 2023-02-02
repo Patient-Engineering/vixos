@@ -61,7 +61,6 @@ class AppVM:
     ) -> str:
         return generate_xml(
             vm_name=self.vm_name,
-            network="libvirt",
             gui=is_gui,
             vm_path=vm_path,
             reginfo=reginfo,
@@ -106,7 +105,7 @@ class AppVM:
         realpath = os.readlink("result/system")
         os.unlink("result")
 
-        qcow2 = f"{self.vixos_path}/{name}.fake.qcow2"
+        qcow2 = f"{self.vixos_path}/empty_rootfs.qcow2"
         if not Path(qcow2).exists():
             subprocess.check_call(["qemu-img", "create", "-f", "qcow2", qcow2, "40M"])
 
