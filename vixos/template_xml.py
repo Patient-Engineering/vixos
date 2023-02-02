@@ -79,7 +79,7 @@ xml_template = """
     <type arch='x86_64'>hvm</type>
     <kernel>{vm_path}/kernel</kernel>
     <initrd>{vm_path}/initrd</initrd>
-    <cmdline>loglevel=4 init={vm_path}/init {reginfo}</cmdline>
+    <cmdline>loglevel=4 init={vm_path}/init console=ttyS0 {reginfo}</cmdline>
   </os>
   <features>
     <acpi></acpi>
