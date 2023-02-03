@@ -108,3 +108,12 @@ xml_template = """
   </devices>
 </domain>
 """
+
+mount_xml_template = """
+<filesystem type='mount' accessmode='passthrough'>
+  <binary path='/run/current-system/sw/bin/virtiofsd' xattr='on' />
+  <driver type='virtiofs' queue='1024'/>
+  <source dir='/home/msm/Projects/ctf'/>
+  <target dir='ctf'/>
+</filesystem>
+"""

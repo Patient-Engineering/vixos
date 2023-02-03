@@ -98,7 +98,7 @@ class AppVM:
             ]
         )
 
-        with open("result/bin/run-nixos-vm", "r") as configf:
+        with open(f"result/bin/run-{self.name}-vm", "r") as configf:
             config = configf.read()
 
         reginfo = re.findall("regInfo=.*/registration", config)[0]
@@ -106,7 +106,8 @@ class AppVM:
         realpath = os.readlink("result/system")
         os.unlink("result")
 
-        qcow2 = f"{self.vixos_path}/empty_rootfs.qcow2"
+        # TODO: find a way to share the rootfs more cleanly
+        qcow2 = f"{self.vixos_path}/{self.name}.qcow2"
         if not Path(qcow2).exists():
             subprocess.check_call(["qemu-img", "create", "-f", "qcow2", qcow2, "40M"])
 

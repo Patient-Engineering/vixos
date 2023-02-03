@@ -42,12 +42,15 @@ in {
   environment.systemPackages = [ appRunner pkgs.%s ];
 
   services.xserver.displayManager.sessionCommands = "${appRunner}/bin/app &";
+
+  networking.hostName = "%s";
 }
 """ % (
         package,
         executable,
         pubkey,
         pubkey,
+        package,
         package,
     )
 
