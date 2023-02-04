@@ -22,4 +22,5 @@ The docker-inspired commands we will initially implement:
 
 Other commands:
 
+- [ ] `vixos appvm` - start a new transient AppVM 
 - [ ] `vixos mount` - mount the current directory to the same path in the VM
