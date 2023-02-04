@@ -1,3 +1,5 @@
+from pathlib import Path
+
 # Shamelessly stolen from https://github.com/jollheef/appvm/blob/master/xml.go
 # To be updated in future versions
 
@@ -7,10 +9,10 @@
 def generate_xml(
     vm_name: str,
     gui: bool,
-    vm_path: str,
+    vm_path: Path,
     reginfo: str,
-    image_path: str,
-    shared_path: str,
+    image_path: Path,
+    shared_path: Path,
 ) -> str:
     devices = gui_devices if gui else ""
 

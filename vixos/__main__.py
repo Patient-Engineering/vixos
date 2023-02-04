@@ -18,13 +18,13 @@ class AppVM:
     def __init__(self, name: str) -> None:
         self.name = name
         # TODO: use pathlib consistently in the project
-        self.vixos_path = os.path.expanduser("~/vixos")
-        self.shared_path = self.vixos_path + "/shared"
+        self.vixos_path = Path.home() / "vixos"
+        self.shared_path = self.vixos_path / "shared"
 
         # TODO: maybe move non-pure init actions to another functions?
-        Path(self.vixos_path).mkdir(exist_ok=True)
-        Path(self.shared_path).mkdir(exist_ok=True)
-        self.ssh = SshManager(Path(self.vixos_path))
+        self.vixos_path.mkdir(exist_ok=True, parents=True)
+        self.shared_path.mkdir(exist_ok=True)
+        self.ssh = SshManager(self.vixos_path)
 
     @property
     def vm_name(self) -> str:
@@ -59,7 +59,7 @@ class AppVM:
         raise ValueError(f"Couldn't get ip address in {retries} tries.")
 
     def xml_config(
-        self, vm_path: str, is_gui: bool, reginfo: str, image_path: str
+        self, vm_path: Path, is_gui: bool, reginfo: str, image_path: Path
     ) -> str:
         return generate_xml(
             vm_name=self.vm_name,
@@ -74,18 +74,18 @@ class AppVM:
         with open(f"{self.vixos_path}/base.nix", "w") as configf:
             configf.write(generate_base_nix())
 
-        localf = Path(self.vixos_path) / "local.nix"
+        localf = self.vixos_path / "local.nix"
         if not localf.exists():
             localf.write_text(generate_local_nix())
 
         configfile = f"{self.name}.nix"
-        configpath = Path(f"{self.vixos_path}/{configfile}")
+        configpath = self.vixos_path / configfile
         if not configpath.exists():
             config = generate_nix(self.name, executable, self.ssh.pubkey_text)
             configpath.write_text(config)
         return configfile
 
-    def generate_vm(self, name: str) -> Tuple[str, str, str]:
+    def generate_vm(self, name: str) -> Tuple[Path, str, Path]:
         subprocess.check_call(
             [
                 "nix-build",
@@ -104,13 +104,16 @@ class AppVM:
 
         reginfo = re.findall("regInfo=.*/registration", config)[0]
 
-        realpath = os.readlink("result/system")
+        realpath = Path(os.readlink("result/system"))
         os.unlink("result")
 
         # TODO: find a way to share the rootfs more cleanly
-        qcow2 = f"{self.vixos_path}/{self.name}.qcow2"
-        if not Path(qcow2).exists():
-            subprocess.check_call(["qemu-img", "create", "-f", "qcow2", qcow2, "40M"])
+        qcow2 = self.vixos_path / f"{self.name}.qcow2"
+        if not qcow2.exists():
+            # This file is tiny on disk, because it's sparse.
+            # And because of copy-on-write and --snapshot it never grows. The 4096M
+            # here is basically just a restriction on maximum non-persistent data size.
+            subprocess.check_call(["qemu-img", "create", "-f", "qcow2", qcow2, "4096M"])
 
         return (realpath, reginfo, qcow2)
 
@@ -122,9 +125,8 @@ class AppVM:
     def ssh_shell_exec_as_root(self, dom, command: str) -> None:
         ip = self.get_ip_address(dom, 1)
         session = self.ssh.ssh_session("root", ip)
-        stdin, stdout, stderr = session.exec_command(command)
-        print(stdout.read())
-        print(stderr.read())
+        # TODO: better error handling?
+        session.exec_command(command)
         session.close()
 
     # TODO extremely ugly, refactor later (duplicated with get_ip_address)s
@@ -192,6 +194,7 @@ class AppVM:
 
     def mount_filesystem(self, conn, mount_tag: str, destination: str) -> None:
         dom = conn.lookupByName(self.vm_name)
+        # TODO: refactor by escaping the shell (ideally abstract over this)
         cmd = f"""
             mkdir -p {destination}
             mount -t virtiofs {mount_tag} {destination}

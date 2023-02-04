@@ -108,7 +108,7 @@ base_nix = """{pkgs, ...}:
 
   environment.etc."xmonad.hs".text = ''
 import XMonad
-main = xmonad defaultConfig
+main = xmonad def
   { workspaces = [ "" ]
   , borderWidth = 0
   , startupHook = startup
