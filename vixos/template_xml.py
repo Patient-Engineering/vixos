@@ -97,7 +97,7 @@ xml_template = """
       <source dir='{shared_path}'/>
       <target dir='shared'/> <!-- workaround for nixpkgs/nixos/modules/virtualisation/qemu-vm.nix -->
     </filesystem>
-    <filesystem type='mount' accessmode='mapped'>
+    <filesystem type='mount' accessmode='passthrough'>
       <source dir='{shared_path}'/>
       <target dir='home'/>
     </filesystem>
@@ -109,11 +109,22 @@ xml_template = """
 </domain>
 """
 
+
+def generate_mount_xml(
+    source: str,
+    tag: str,
+) -> str:
+    return mount_xml_template.format(
+        source_dir=source,
+        mount_tag=tag,
+    )
+
+
 mount_xml_template = """
 <filesystem type='mount' accessmode='passthrough'>
   <binary path='/run/current-system/sw/bin/virtiofsd' xattr='on' />
   <driver type='virtiofs' queue='1024'/>
-  <source dir='/home/msm/Projects/ctf'/>
-  <target dir='ctf'/>
+  <source dir='{source_dir}'/>
+  <target dir='{mount_tag}'/>
 </filesystem>
 """
