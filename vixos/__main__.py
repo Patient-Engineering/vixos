@@ -5,8 +5,9 @@ import subprocess
 import libvirt
 import time
 import tempfile
+from xml.dom import minidom
 from pathlib import Path
-from .template_xml import generate_xml
+from .template_xml import generate_xml, generate_mount_xml
 from .template_nix import generate_base_nix, generate_nix, generate_local_nix
 from .libvirt_utils import libvirt_connection
 from typing import Tuple, Optional
@@ -98,7 +99,7 @@ class AppVM:
             ]
         )
 
-        with open("result/bin/run-nixos-vm", "r") as configf:
+        with open(f"result/bin/run-{self.name}-vm", "r") as configf:
             config = configf.read()
 
         reginfo = re.findall("regInfo=.*/registration", config)[0]
@@ -106,7 +107,8 @@ class AppVM:
         realpath = os.readlink("result/system")
         os.unlink("result")
 
-        qcow2 = f"{self.vixos_path}/empty_rootfs.qcow2"
+        # TODO: find a way to share the rootfs more cleanly
+        qcow2 = f"{self.vixos_path}/{self.name}.qcow2"
         if not Path(qcow2).exists():
             subprocess.check_call(["qemu-img", "create", "-f", "qcow2", qcow2, "40M"])
 
@@ -115,8 +117,15 @@ class AppVM:
     def ssh_attach_user(self, dom, wait: bool) -> None:
         retries = 20 if wait else 1
         ip = self.get_ip_address(dom, retries)
-        assert ip is not None
         self.ssh.interactive_session("user", ip)
+
+    def ssh_shell_exec_as_root(self, dom, command: str) -> None:
+        ip = self.get_ip_address(dom, 1)
+        session = self.ssh.ssh_session("root", ip)
+        stdin, stdout, stderr = session.exec_command(command)
+        print(stdout.read())
+        print(stderr.read())
+        session.close()
 
     # TODO extremely ugly, refactor later (duplicated with get_ip_address)s
     def get_ip_address_from_conn(self, conn) -> str:
@@ -164,6 +173,30 @@ class AppVM:
             dom.destroy()
         except libvirt.libvirtError:
             print(f"Destroying failed (probably domain already destroyed).")
+
+    def has_filesystem(self, conn, mount_tag) -> bool:
+        dom = conn.lookupByName(self.vm_name)
+        xml = dom.XMLDesc()
+        dom = minidom.parseString(xml)
+        for diskType in dom.getElementsByTagName("filesystem"):
+            target_obj = diskType.getElementsByTagName("target")[0]
+            target_dir = target_obj.attributes["dir"].value
+            if target_dir == mount_tag:
+                return True
+        return False
+
+    def attach_filesystem(self, conn, source: str, mount_tag: str) -> None:
+        dom = conn.lookupByName(self.vm_name)
+        mount_xml = generate_mount_xml(source, mount_tag)
+        dom.attachDevice(mount_xml)
+
+    def mount_filesystem(self, conn, mount_tag: str, destination: str) -> None:
+        dom = conn.lookupByName(self.vm_name)
+        cmd = f"""
+            mkdir -p {destination}
+            mount -t virtiofs {mount_tag} {destination}
+        """
+        self.ssh_shell_exec_as_root(dom, cmd)
 
 
 def run(args) -> None:
@@ -232,6 +265,19 @@ def copy(args) -> None:
             dest.put(conn, source_path, dest_path)
 
 
+def mount(args) -> None:
+    # If destination parameter is omitted, use source.
+    destination = args.destination or args.source
+
+    appvm = AppVM(args.package)
+
+    with libvirt_connection("qemu:///system") as conn:
+        mount_name = destination
+        if not appvm.has_filesystem(conn, mount_name):
+            appvm.attach_filesystem(conn, args.source, mount_name)
+        appvm.mount_filesystem(conn, mount_name, destination)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="VixOS is a secure application launcher."
@@ -287,6 +333,27 @@ def main():
         help="Destination specification, like `vmname:/tmp/file` or `mylocalfile`.",
     )
     cp_parser.set_defaults(func=copy)
+
+    mount_parser = subparsers.add_parser(
+        "mount", help="Mount a directory into a running VM"
+    )
+    mount_parser.set_defaults(func=mount)
+    mount_parser.add_argument(
+        "package",
+        help="Profile (package) name.",
+    )
+    mount_parser.add_argument(
+        "source",
+        nargs="?",
+        default=os.getcwd(),
+        help="Source directory (on the host). Uses current workign directory by default.",
+    )
+    mount_parser.add_argument(
+        "destination",
+        nargs="?",
+        default=None,
+        help="Destination directory (in the VM). Same as source directory by default.",
+    )
 
     args = parser.parse_args()
     args.func(args)

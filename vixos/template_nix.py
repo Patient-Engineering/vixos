@@ -42,12 +42,15 @@ in {
   environment.systemPackages = [ appRunner pkgs.%s ];
 
   services.xserver.displayManager.sessionCommands = "${appRunner}/bin/app &";
+
+  networking.hostName = "%s";
 }
 """ % (
         package,
         executable,
         pubkey,
         pubkey,
+        package,
         package,
     )
 
@@ -59,6 +62,18 @@ def generate_base_nix():
 
 base_nix = """{pkgs, ...}:
 {
+  systemd.services.home-user-build-xmonad = {
+    description = "Link xmonad configuration";
+    serviceConfig = {
+      ExecStart = "/bin/sh -c 'mkdir -p /home/user/.xmonad && ln -sf /etc/xmonad.hs /home/user/.xmonad/xmonad.hs && /run/current-system/sw/bin/xmonad --recompile'";
+      RemainAfterExit = "yes";
+      User = "user";
+      Restart = "on-failure";
+      TimeoutSec = 10;
+    };
+    wantedBy = [ "multi-user.target" ];
+  };
+
   services.xserver = {
     enable = true;
     desktopManager.xterm.enable = false;
