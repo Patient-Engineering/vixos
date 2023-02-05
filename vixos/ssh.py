@@ -14,6 +14,7 @@ class SshManager:
         if not self.privkey_path.exists():
             key = RSA.generate(2048)
             self.privkey_path.write_bytes(key.exportKey("PEM"))
+            self.privkey_path.chmod(400)
 
         return RSA.importKey(self.privkey_path.read_bytes())
 
