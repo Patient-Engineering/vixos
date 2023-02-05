@@ -5,9 +5,9 @@ import paramiko
 
 
 class SshManager:
-    def __init__(self, vixos_path: Path) -> None:
-        self.vixos_path = vixos_path
-        self.privkey_path = self.vixos_path / "vixos_id_rsa"
+    def __init__(self, vixos_root: Path) -> None:
+        self.vixos_root = vixos_root
+        self.privkey_path = self.vixos_root / "vixos_id_rsa"
         self.privkey = self.ensure_privkey()
 
     def ensure_privkey(self) -> RSA.RsaKey:

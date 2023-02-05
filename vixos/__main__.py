@@ -8,7 +8,7 @@ import tempfile
 from xml.dom import minidom
 from pathlib import Path
 from .template_xml import generate_xml, generate_mount_xml
-from .template_nix import generate_base_nix, generate_nix, generate_local_nix
+from .template_nix import generate_nix_managed, generate_nix_user, generate_local_nix
 from .libvirt_utils import libvirt_connection
 from typing import Tuple, Optional
 from .ssh import SshManager
@@ -17,14 +17,14 @@ from .ssh import SshManager
 class AppVM:
     def __init__(self, name: str) -> None:
         self.name = name
-        # TODO: use pathlib consistently in the project
-        self.vixos_path = Path.home() / "vixos"
-        self.shared_path = self.vixos_path / "shared"
+        self.vixos_root = Path.home() / "vixos"
+        self.vixos_path = self.vixos_root / name
+        self.shared_path = self.vixos_path / "home"
 
         # TODO: maybe move non-pure init actions to another functions?
         self.vixos_path.mkdir(exist_ok=True, parents=True)
         self.shared_path.mkdir(exist_ok=True)
-        self.ssh = SshManager(self.vixos_path)
+        self.ssh = SshManager(self.vixos_root)
 
     @property
     def vm_name(self) -> str:
@@ -71,21 +71,19 @@ class AppVM:
         )
 
     def make_nix_config_file(self, executable: str) -> str:
-        with open(f"{self.vixos_path}/base.nix", "w") as configf:
-            configf.write(generate_base_nix())
+        managed_config = self.vixos_path / "managed.nix"
+        managed_config.write_text(generate_nix_managed(self.name, self.ssh.pubkey_text))
 
         localf = self.vixos_path / "local.nix"
         if not localf.exists():
             localf.write_text(generate_local_nix())
 
-        configfile = f"{self.name}.nix"
-        configpath = self.vixos_path / configfile
+        configpath = self.vixos_path / "default.nix"
         if not configpath.exists():
-            config = generate_nix(self.name, executable, self.ssh.pubkey_text)
+            config = generate_nix_user(self.name, executable)
             configpath.write_text(config)
-        return configfile
 
-    def generate_vm(self, name: str) -> Tuple[Path, str, Path]:
+    def generate_vm(self) -> Tuple[Path, str, Path]:
         subprocess.check_call(
             [
                 "nix-build",
@@ -93,7 +91,7 @@ class AppVM:
                 "-A",
                 "config.system.build.vm",
                 "-I",
-                f"nixos-config={self.vixos_path}/{name}",
+                f"nixos-config={self.vixos_path}/default.nix",
                 "-I",
                 self.vixos_path,
             ]
@@ -153,8 +151,8 @@ class AppVM:
         )
 
     def start(self, conn, is_gui: bool, executable: str) -> None:
-        config_file = self.make_nix_config_file(executable)
-        vm_path, reginfo, qcow2 = self.generate_vm(config_file)
+        self.make_nix_config_file(executable)
+        vm_path, reginfo, qcow2 = self.generate_vm()
         config = self.xml_config(vm_path, is_gui, reginfo, qcow2)
         dom = conn.createXML(config)
         if not dom:
