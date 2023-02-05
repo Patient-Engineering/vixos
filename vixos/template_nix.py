@@ -12,7 +12,7 @@ def generate_global_nix() -> str:
     return "{}"
 
 
-def generate_nix_user(package: str, executable: str) -> str:
+def generate_default_nix(package: str, executable: str) -> str:
     return """{pkgs, ...}:
 let
   application = "${pkgs.%s}/bin/%s";
@@ -43,7 +43,7 @@ in {
     )
 
 
-def generate_nix_managed(package: str, pubkey: str):
+def generate_managed_nix(package: str, pubkey: str):
     uid = os.getuid()
     return base_nix % (uid, pubkey, pubkey, package)
 
