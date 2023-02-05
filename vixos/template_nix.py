@@ -8,7 +8,7 @@ def generate_local_nix() -> str:
 }"""
 
 
-def generate_nix(package: str, executable: str, pubkey: str) -> str:
+def generate_nix_user(package: str, executable: str) -> str:
     return """{pkgs, ...}:
 let
   application = "${pkgs.%s}/bin/%s";
@@ -23,41 +23,24 @@ let
 in {
   imports = [
     <nixpkgs/nixos/modules/virtualisation/qemu-vm.nix>
-    <base.nix>
-    <local.nix>
+    ./managed.nix
+    ../local.nix
   ];
-
-  # TODO: this is currently hilariously insecure, VMs can login to others.
-  users.extraUsers.user = {
-      openssh.authorizedKeys.keys = [
-        "%s"
-      ];
-  };
-  users.users.root = {
-      openssh.authorizedKeys.keys = [
-        "%s"
-      ];
-  };
 
   environment.systemPackages = [ appRunner pkgs.%s ];
 
   services.xserver.displayManager.sessionCommands = "${appRunner}/bin/app &";
-
-  networking.hostName = "%s";
 }
 """ % (
         package,
         executable,
-        pubkey,
-        pubkey,
-        package,
         package,
     )
 
 
-def generate_base_nix():
+def generate_nix_managed(package: str, pubkey: str):
     uid = os.getuid()
-    return base_nix % (uid)
+    return base_nix % (uid, pubkey, pubkey, package)
 
 
 base_nix = """{pkgs, ...}:
@@ -155,4 +138,18 @@ startup = do
     };
     wantedBy = ["timers.target"];
   };
+
+  # TODO: this is currently hilariously insecure, VMs can login to others.
+  users.extraUsers.user = {
+      openssh.authorizedKeys.keys = [
+        "%s"
+      ];
+  };
+  users.users.root = {
+      openssh.authorizedKeys.keys = [
+        "%s"
+      ];
+  };
+
+  networking.hostName = "%s";
 }"""
