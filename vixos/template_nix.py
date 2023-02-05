@@ -2,14 +2,14 @@ import os
 
 
 def generate_local_nix() -> str:
+    return "{}"
+
+
+def generate_global_nix() -> str:
     return """{
   # services.xserver.xkbOptions = "ctrl:nocaps";
   # services.xserver.layout = "pl(intl)";
 }"""
-
-
-def generate_global_nix() -> str:
-    return "{}"
 
 
 def generate_default_nix(package: str, executable: str) -> str:
