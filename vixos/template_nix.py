@@ -8,6 +8,10 @@ def generate_local_nix() -> str:
 }"""
 
 
+def generate_global_nix() -> str:
+    return "{}"
+
+
 def generate_nix_user(package: str, executable: str) -> str:
     return """{pkgs, ...}:
 let
@@ -25,6 +29,7 @@ in {
     <nixpkgs/nixos/modules/virtualisation/qemu-vm.nix>
     ./managed.nix
     ./local.nix
+    ./global.nix
   ];
 
   environment.systemPackages = [ appRunner pkgs.%s ];

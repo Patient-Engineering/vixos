@@ -8,7 +8,7 @@ import tempfile
 from xml.dom import minidom
 from pathlib import Path
 from .template_xml import generate_xml, generate_mount_xml
-from .template_nix import generate_nix_managed, generate_nix_user, generate_local_nix
+from .template_nix import generate_nix_managed, generate_nix_user, generate_local_nix, generate_global_nix
 from .libvirt_utils import libvirt_connection
 from typing import Tuple, Optional
 from .ssh import SshManager
@@ -74,7 +74,11 @@ class AppVM:
         managed_config = self.vixos_path / "managed.nix"
         managed_config.write_text(generate_nix_managed(self.name, self.ssh.pubkey_text))
 
-        localf = self.vixos_root / "local.nix"
+        globalf = self.vixos_root / "global.nix"
+        if not globalf.exists():
+            globalf.write_text(generate_global_nix())
+
+        localf = self.vixos_path / "local.nix"
         if not localf.exists():
             localf.write_text(generate_local_nix())
 
