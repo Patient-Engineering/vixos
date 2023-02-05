@@ -74,7 +74,7 @@ class AppVM:
         managed_config = self.vixos_path / "managed.nix"
         managed_config.write_text(generate_nix_managed(self.name, self.ssh.pubkey_text))
 
-        localf = self.vixos_path / "local.nix"
+        localf = self.vixos_root / "local.nix"
         if not localf.exists():
             localf.write_text(generate_local_nix())
 
