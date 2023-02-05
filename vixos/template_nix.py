@@ -24,7 +24,7 @@ in {
   imports = [
     <nixpkgs/nixos/modules/virtualisation/qemu-vm.nix>
     ./managed.nix
-    ../local.nix
+    ./local.nix
   ];
 
   environment.systemPackages = [ appRunner pkgs.%s ];
