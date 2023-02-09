@@ -44,7 +44,7 @@ gui_devices = """
 xml_template = """
 <domain type='kvm' xmlns:qemu='http://libvirt.org/schemas/domain/qemu/1.0'>
   <name>{vm_name}</name>
-  <memory unit='GiB'>4</memory>
+  <memory unit='GiB'>8</memory>
   <currentMemory unit='GiB'>1</currentMemory>
   <vcpu>4</vcpu>
   <os>
