@@ -32,7 +32,7 @@ in {
     ../global.nix
   ];
 
-  environment.systemPackages = [ appRunner pkgs.%s ];
+  environment.systemPackages = [ appRunner pkgs.waypipe pkgs.%s ];
 
   services.xserver.displayManager.sessionCommands = "${appRunner}/bin/app &";
 }

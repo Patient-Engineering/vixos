@@ -22,9 +22,10 @@ class SshManager:
     def pubkey_text(self) -> str:
         return self.privkey.publickey().exportKey("OpenSSH").decode()
 
-    def interactive_session(self, user: str, host: str) -> None:
+    def interactive_session(self, user: str, host: str, flags: list[str] = []) -> None:
         # TODO: use a hardcoded known host key here instead?
         # TODO: use paramiko session instead of shelling to ssh?
+        flags = flags if flags else []
         subprocess.check_call(
             [
                 "ssh",
@@ -36,6 +37,7 @@ class SshManager:
                 "-o",
                 "UserKnownHostsFile=/dev/null",
             ]
+            + flags
         )
 
     def ssh_session(self, user: str, host: str) -> paramiko.SSHClient:

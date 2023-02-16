@@ -5,13 +5,25 @@ import subprocess
 import libvirt
 import time
 import tempfile
+import random
+import string
+import subprocess
 from xml.dom import minidom
 from pathlib import Path
 from .template_xml import generate_xml, generate_mount_xml
-from .template_nix import generate_managed_nix, generate_default_nix, generate_local_nix, generate_global_nix
+from .template_nix import (
+    generate_managed_nix,
+    generate_default_nix,
+    generate_local_nix,
+    generate_global_nix,
+)
 from .libvirt_utils import libvirt_connection
 from typing import Tuple, Optional
 from .ssh import SshManager
+
+
+def random_name() -> str:
+    return "".join(random.choice(string.ascii_lowercase) for _ in range(12))
 
 
 class AppVM:
@@ -97,7 +109,7 @@ class AppVM:
                 "-I",
                 f"nixos-config={self.vixos_path}/default.nix",
                 "-I",
-                self.vixos_path,
+                str(self.vixos_path),
             ]
         )
 
@@ -162,6 +174,19 @@ class AppVM:
         if not dom:
             raise SystemExit("Failed to create a domain from an XML definition")
         print(f"Guest {dom.name()} has booted")
+
+    def waypipe_exec(self, conn, command: str) -> None:
+        dom = conn.lookupByName(self.vm_name)
+        ip = self.get_ip_address(dom, 1)
+
+        name = random_name()
+        socket_name = f"/tmp/{name}"
+
+        client = subprocess.Popen(["waypipe", "--socket", socket_name, "client"])
+        command = f"waypipe --socket {socket_name} server -- {command}"
+        flags = ["-R", f"{socket_name}:{socket_name}", command]
+        self.ssh.interactive_session("user", ip, flags)
+        client.kill()
 
     def attach(self, conn, is_gui: bool) -> None:
         if is_gui:
@@ -283,6 +308,13 @@ def mount(args) -> None:
         appvm.mount_filesystem(conn, mount_name, destination)
 
 
+def waypipe_exec(args) -> None:
+    appvm = AppVM(args.workspace)
+
+    with libvirt_connection("qemu:///system") as conn:
+        appvm.waypipe_exec(conn, args.command)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="VixOS is a secure application launcher."
@@ -323,6 +355,19 @@ def main():
         "package",
         # Yes, this parameter is basically a "workspace" and not a package.
         help="Attach to a VM responsible for this package.",
+    )
+
+    # TODO in the future this should get flags like -R -L - or completely rewrite this.
+    exec_parser = subparsers.add_parser("waypipe_exec", help="Exec with waypipe")
+    exec_parser.set_defaults(func=waypipe_exec)
+    exec_parser.add_argument(
+        "workspace",
+        help="Use to this workspace.",
+    )
+
+    exec_parser.add_argument(
+        "command",
+        help="Command to execute.",
     )
 
     cp_parser = subparsers.add_parser(
