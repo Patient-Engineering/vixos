@@ -8,7 +8,11 @@
   };
 
   outputs = { self, nixpkgs, flake-utils }:
-    flake-utils.lib.eachDefaultSystem
+    let
+      notDarwin = s: !(nixpkgs.lib.strings.hasInfix "darwin" s);
+      systems = nixpkgs.lib.filter notDarwin flake-utils.lib.defaultSystems;
+    in
+    flake-utils.lib.eachSystem systems
       (system:
         let pkgs = nixpkgs.legacyPackages.${system};
         in
