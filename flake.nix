@@ -17,6 +17,18 @@
         let pkgs = nixpkgs.legacyPackages.${system};
         in
         {
+          packages.vixos = pkgs.python311.pkgs.buildPythonPackage rec {
+            pname = "vixos";
+            version = "0.0.0";
+            src = ./.;
+
+            propagatedBuildInputs = with pkgs; [
+              python311Packages.libvirt
+              python311Packages.pycryptodome
+              python311Packages.paramiko
+            ];
+          };
+          packages.default = self.packages.${system}.vixos;
           devShell = pkgs.mkShell {
             packages = with pkgs; [
               python311Packages.libvirt
