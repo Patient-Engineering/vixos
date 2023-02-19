@@ -19,9 +19,9 @@
         {
           devShell = pkgs.mkShell {
             packages = with pkgs; [
-              python39Packages.libvirt
-              python39Packages.pycryptodome
-              python39Packages.paramiko
+              python311Packages.libvirt
+              python311Packages.pycryptodome
+              python311Packages.paramiko
               waypipe
               ((import ./virt-viewer-without-menu) pkgs)
             ];
