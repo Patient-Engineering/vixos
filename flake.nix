@@ -18,6 +18,7 @@
               python39Packages.libvirt
               python39Packages.pycryptodome
               python39Packages.paramiko
+              waypipe
               ((import ./virt-viewer-without-menu) pkgs)
             ];
           };
