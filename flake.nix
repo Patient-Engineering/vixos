@@ -26,6 +26,7 @@
               python311Packages.libvirt
               python311Packages.pycryptodome
               python311Packages.paramiko
+              waypipe
             ];
           };
           packages.default = self.packages.${system}.vixos;
