@@ -1,3 +1,4 @@
 libvirt-python
 pycryptodome
 paramiko
+click

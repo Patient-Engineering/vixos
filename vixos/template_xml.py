@@ -88,7 +88,7 @@ xml_template = """
     <!-- filesystems -->
     <filesystem type='mount' accessmode='passthrough'>
       <source dir='/nix/store'/>
-      <target dir='nix-store'/>
+      <target dir='nix-store'/> <!-- handled by nixpkgs/nixos/modules/virtualisation/qemu-vm.nix -->
       <readonly/>
     </filesystem>
     <filesystem type='mount' accessmode='mapped'>
