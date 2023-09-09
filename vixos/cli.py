@@ -1,5 +1,6 @@
 import click
 import os
+import tempfile
 
 from .appvm import AppVM
 from .libvirt_utils import libvirt_connection
@@ -18,7 +19,7 @@ def parse_file_specification(spec: str) -> tuple[str | None, str]:
 
 @click.group()
 @click.pass_context
-def main(ctx):
+def main():
     pass
 
 

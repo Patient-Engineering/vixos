@@ -1,10 +1,8 @@
 import re
 import os
-import argparse
 import subprocess
 import libvirt
 import time
-import tempfile
 import random
 import string
 import subprocess
@@ -81,7 +79,7 @@ class AppVM:
             shared_path=self.shared_path,
         )
 
-    def make_nix_config_file(self, executable: str) -> str:
+    def make_nix_config_file(self, executable: str) -> None:
         managed_config = self.vixos_path / "managed.nix"
         managed_config.write_text(generate_managed_nix(self.name, self.ssh.pubkey_text))
 
@@ -226,7 +224,3 @@ class AppVM:
             mount -t virtiofs {mount_tag} {destination}
         """
         self.ssh_shell_exec_as_root(dom, cmd)
-
-
-if __name__ == "__main__":
-    main()
