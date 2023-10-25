@@ -28,6 +28,7 @@
               python311Packages.libvirt
               python311Packages.pycryptodome
               python311Packages.paramiko
+              python311Packages.click
               waypipe
             ];
           };
@@ -37,6 +38,7 @@
               python311Packages.libvirt
               python311Packages.pycryptodome
               python311Packages.paramiko
+              python311Packages.click
               waypipe
               ((import ./virt-viewer-without-menu) pkgs)
             ];
